@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>場面転換素材メーカー | ココフォリア向け APNG ジェネレータ</title>
+<meta name="description" content="暗転・ワイプ・アイリスなど、TRPGオンラインセッション用の場面転換アニメーション素材（APNG）をブラウザだけで作れる無料ツールです。">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #15161a; --panel: #1e1f26; --line: #303240; --line-soft: #282a36;
+    --fg: #e7e7ea; --muted: #9a9aa5; --accent: #6b70ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 13px; }
+  header { padding: 18px 24px 14px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 4px; font-size: 17px; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; }
+  main { display: grid; gap: 20px; padding: 20px 24px 40px;
+         grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: 10px; padding: 4px 16px 16px; }
+  fieldset { border: 0; border-top: 1px solid var(--line-soft); margin: 14px 0 0; padding: 12px 0 0; }
+  fieldset:first-of-type { border-top: 0; }
+  legend { padding: 0; color: var(--muted); font-size: 11px; letter-spacing: .08em; }
+  .row { display: grid; grid-template-columns: 84px 1fr; gap: 10px;
+         align-items: center; margin-top: 10px; }
+  .row > label { color: var(--muted); }
+  .row.wide { grid-template-columns: 1fr; }
+  .with-value { display: grid; grid-template-columns: 1fr 46px; gap: 8px; align-items: center; }
+  .with-value output { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+  select, input[type=text], textarea {
+    width: 100%; background: #14151b; color: var(--fg); font: inherit;
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
+  input[type=color] { width: 100%; height: 30px; padding: 2px; background: #14151b;
+                      border: 1px solid var(--line); border-radius: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+  select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; }
+  .desc { margin: 8px 0 0; color: var(--muted); font-size: 12px; min-height: 1.5em; }
+  .hidden { display: none; }
+
+  button { background: #2f3140; color: var(--fg); border: 1px solid #464a5e;
+           border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; }
+  button:hover { background: #3a3d4f; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  button.primary:hover { background: #575cf5; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  .stage-wrap { position: sticky; top: 20px; display: grid; gap: 12px; }
+  .stage { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden;
+           border: 1px solid var(--line); }
+  .stage.scene {
+    background:
+      repeating-linear-gradient(0deg, #ffffff14 0 1px, transparent 1px 40px),
+      repeating-linear-gradient(90deg, #ffffff14 0 1px, transparent 1px 40px),
+      linear-gradient(135deg, #3b5a6b, #6b4b5a 55%, #4a4b6b); }
+  .stage.scene::after { content: "SCENE"; position: absolute; inset: 0; display: grid;
+                        place-items: center; font-size: 44px; font-weight: 700;
+                        letter-spacing: .3em; color: #ffffff40; }
+  .stage.light { background: #f2f2f4; }
+  .stage.checker {
+    background-color: #cfcfd6;
+    background-image: linear-gradient(45deg, #9a9aa5 25%, transparent 25% 75%, #9a9aa5 75%),
+                      linear-gradient(45deg, #9a9aa5 25%, transparent 25% 75%, #9a9aa5 75%);
+    background-size: 32px 32px; background-position: 0 0, 16px 16px; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bar .spacer { flex: 1; }
+  .status { color: var(--muted); font-size: 12px; min-height: 1.4em;
+            font-variant-numeric: tabular-nums; margin: 0; }
+  .status.error { color: #ff8f8f; }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 0; }
+  .note code { background: #14151b; border: 1px solid var(--line);
+               border-radius: 4px; padding: 1px 5px; }
+  .note h2 { font-size: 13px; color: var(--fg); margin: 18px 0 6px; }
+  .note ul { margin: 6px 0; padding-left: 1.3em; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 5px 10px; background: transparent; }
+  .seg button[aria-pressed=true] { background: #3a3d4f; }
+  footer { border-top: 1px solid var(--line); padding: 16px 24px 40px;
+           color: var(--muted); font-size: 12px; line-height: 1.9; }
+  footer a { color: #a8abff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>場面転換素材メーカー</h1>
+  <p>暗転・ワイプ・アイリスなどの場面転換アニメーション（APNG）を作れます。設定を変えるとその場でプレビューされ、「ダウンロード」で保存できます。すべてブラウザの中だけで処理され、画像がどこかに送られることはありません。</p>
+</header>
+
+<main>
+  <form class="panel" id="form" autocomplete="off">
+    <fieldset>
+      <legend>プリセット</legend>
+      <div class="row wide">
+        <select id="preset"></select>
+      </div>
+      <p class="desc" id="desc"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>見た目</legend>
+      <div class="row"><label for="color">色</label><input type="color" id="color"></div>
+      <div class="row"><label for="size">出力サイズ</label>
+        <select id="size">
+          <option value="1280x720">1280 × 720</option>
+          <option value="1920x1080">1920 × 1080</option>
+          <option value="960x540">960 × 540</option>
+          <option value="640x360">640 × 360（軽い）</option>
+        </select>
+      </div>
+      <div class="row"><label for="feather">ぼかし</label>
+        <span class="with-value"><input type="range" id="feather" min="1" max="255" step="1"><output id="featherOut"></output></span>
+      </div>
+      <div class="row" id="rowDirection"><label for="direction">向き</label>
+        <select id="direction">
+          <option value="right">左から右へ</option>
+          <option value="left">右から左へ</option>
+          <option value="down">上から下へ</option>
+          <option value="up">下から上へ</option>
+          <option value="down-right">左上から右下へ</option>
+          <option value="down-left">右上から左下へ</option>
+          <option value="up-right">左下から右上へ</option>
+          <option value="up-left">右下から左上へ</option>
+        </select>
+      </div>
+      <div class="row" id="rowAxis"><label for="axis">方向</label>
+        <select id="axis"><option value="y">上下</option><option value="x">左右</option></select>
+      </div>
+      <div class="row" id="rowCount"><label for="count">本数</label>
+        <span class="with-value"><input type="range" id="count" min="2" max="40" step="1"><output id="countOut"></output></span>
+      </div>
+      <div class="row" id="rowBlock"><label for="block">粒の大きさ</label>
+        <span class="with-value"><input type="range" id="block" min="1" max="60" step="1"><output id="blockOut"></output></span>
+      </div>
+      <div class="row" id="rowIris"><label for="iris">円の形</label>
+        <select id="iris"><option value="circle">真円</option><option value="ellipse">画面なり</option></select>
+      </div>
+      <div class="row" id="rowCenter"><label for="centerX">中心</label>
+        <span class="with-value" style="grid-template-columns: 1fr 1fr;">
+          <input type="range" id="centerX" min="0" max="1" step="0.05" title="横位置">
+          <input type="range" id="centerY" min="0" max="1" step="0.05" title="縦位置">
+        </span>
+      </div>
+      <div class="row" id="rowBand"><label for="band">帯の幅</label>
+        <span class="with-value"><input type="range" id="band" min="10" max="255" step="5"><output id="bandOut"></output></span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>タイミング</legend>
+      <div class="row"><label for="duration">動きの秒数</label>
+        <span class="with-value"><input type="range" id="duration" min="0.1" max="3" step="0.05"><output id="durationOut"></output></span>
+      </div>
+      <div class="row"><label for="hold">静止の秒数</label>
+        <span class="with-value"><input type="range" id="hold" min="0" max="3" step="0.1"><output id="holdOut"></output></span>
+      </div>
+      <div class="row"><label for="ease">速度変化</label>
+        <select id="ease">
+          <option value="in-out">なめらか</option>
+          <option value="linear">一定</option>
+          <option value="in">だんだん速く</option>
+          <option value="out">だんだん遅く</option>
+        </select>
+      </div>
+      <div class="row"><label for="fps">なめらかさ</label>
+        <select id="fps">
+          <option value="24">24 fps</option>
+          <option value="30">30 fps</option>
+          <option value="15">15 fps</option>
+          <option value="12">12 fps（軽い）</option>
+        </select>
+      </div>
+      <div class="row"><label for="loop">くり返し</label>
+        <span><input type="checkbox" id="loop"> <span class="note">ずっとループさせる</span></span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>テロップ（空欄なら文字なし）</legend>
+      <div class="row wide"><textarea id="text" placeholder="例）――  翌朝  ――"></textarea></div>
+      <div class="row"><label for="textColor">文字色</label><input type="color" id="textColor"></div>
+      <div class="row"><label for="fontSize">文字サイズ</label>
+        <span class="with-value"><input type="range" id="fontSize" min="16" max="200" step="2"><output id="fontSizeOut"></output></span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>詳細</legend>
+      <div class="row"><label for="mode">動き方</label>
+        <select id="mode">
+          <option value="cover">覆う（隠す側）</option>
+          <option value="uncover">開く（見せる側）</option>
+          <option value="sweep">通過する</option>
+        </select>
+      </div>
+      <div class="row"><label for="invert">反転</label>
+        <span><input type="checkbox" id="invert"> <span class="note">進む向きを逆にする</span></span>
+      </div>
+    </fieldset>
+  </form>
+
+  <div class="stage-wrap">
+    <div class="bar">
+      <span class="seg" id="bgSeg">
+        <button type="button" data-bg="scene" aria-pressed="true">シーン風</button>
+        <button type="button" data-bg="light">白</button>
+        <button type="button" data-bg="checker">市松</button>
+      </span>
+      <span class="spacer"></span>
+      <button type="button" id="replay">もう一度再生</button>
+      <button type="button" id="download" class="primary">ダウンロード</button>
+    </div>
+    <div class="stage scene" id="stage"><canvas id="preview"></canvas></div>
+    <p class="status" id="status">読み込み中...</p>
+
+    <div class="note">
+      <h2>使い方</h2>
+      <ul>
+        <li>プリセットを選び、色や秒数を調整して「ダウンロード」を押します。</li>
+        <li>保存されるのは APNG（中身がアニメーションの <code>.png</code>）です。そのまま画像としてアップロードできます。</li>
+        <li>既定は「1 回だけ再生して最後のコマで止まる」動きです。暗転は黒いまま残り、明転は透明になって消えます。</li>
+        <li>暗転で場面を隠す → 背景を差し替える → 明転で見せる、と 2 枚 1 組で使うと自然につながります。</li>
+      </ul>
+      <h2>うまく作るコツ</h2>
+      <ul>
+        <li>画面いっぱいに広げて使う想定です。ベタ塗り中心の効果なら小さいサイズでもきれいなので、640 × 360 にするとファイルがかなり軽くなります。</li>
+        <li>「ぼかし」を上げると境界がやわらかく、下げるとくっきりします。</li>
+        <li>「静止の秒数」は、動きが終わったあと最後の絵を出しておく時間です。場面を差し替える余裕をここで作ります。</li>
+        <li>ディゾルブは粒がランダムなぶんファイルが重くなります。「粒の大きさ」を上げると軽くなります。</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<footer>
+  ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
+  TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
+  <span id="version">v1</span> ・ 最終更新 2026-09-08
+</footer>
+
+<script src="apng.v1.js"></script>
+<script src="app.v1.js"></script>
+</body>
+</html>
