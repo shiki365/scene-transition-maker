@@ -16,11 +16,13 @@
 <meta property="og:image:alt" content="場面転換素材メーカー － 暗転・ワイプ・アイリスのアニメーション素材をブラウザだけで作れます">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
   :root {
     color-scheme: dark;
     --bg: #15161a; --panel: #1e1f26; --line: #303240; --line-soft: #282a36;
     --fg: #e7e7ea; --muted: #9a9aa5; --accent: #6b70ff;
+    --button: #575cf5; /* darker than --accent so white text passes 4.5:1 */
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg);
@@ -63,8 +65,9 @@
   button { background: #2f3140; color: var(--fg); border: 1px solid #464a5e;
            border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; }
   button:hover { background: #3a3d4f; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-  button.primary:hover { background: #575cf5; }
+  button.primary { background: var(--button); border-color: var(--button); color: #fff; font-weight: 700; }
+  button.primary:hover { background: #4a4fe0; }
+  button.small { padding: 4px 9px; font-size: 12px; }
   button:disabled { opacity: .5; cursor: default; }
 
   .stage-wrap { position: sticky; top: 20px; display: grid; gap: 12px; }
@@ -116,7 +119,7 @@
     <fieldset>
       <legend>プリセット</legend>
       <div class="row wide">
-        <select id="preset"></select>
+        <select id="preset" aria-label="プリセット"></select>
       </div>
       <p class="desc" id="desc"></p>
     </fieldset>
@@ -201,7 +204,7 @@
 
     <fieldset>
       <legend>テロップ（空欄なら文字なし）</legend>
-      <div class="row wide"><textarea id="text" placeholder="例）――  翌朝  ――"></textarea></div>
+      <div class="row wide"><textarea id="text" placeholder="例）――  翌朝  ――" aria-label="テロップの文字"></textarea></div>
       <div class="row"><label for="textColor">文字色</label><input type="color" id="textColor"></div>
       <div class="row"><label for="fontSize">文字サイズ</label>
         <span class="with-value"><input type="range" id="fontSize" min="16" max="200" step="2"><output id="fontSizeOut"></output></span>
@@ -231,6 +234,8 @@
         <button type="button" data-bg="checker">市松</button>
       </span>
       <span class="spacer"></span>
+      <button type="button" class="small" id="undo" title="元に戻す (Ctrl+Z)">↶ 戻す</button>
+      <button type="button" class="small" id="redo" title="やり直す (Ctrl+Y)">↷ 進む</button>
       <button type="button" id="replay">もう一度再生</button>
       <button type="button" id="download" class="primary">ダウンロード</button>
     </div>
@@ -242,7 +247,7 @@
       <ul>
         <li>プリセットを選び、色や秒数を調整して「ダウンロード」を押します。</li>
         <li>保存されるのは APNG（中身がアニメーションの <code>.png</code>）です。そのまま画像としてアップロードできます。</li>
-        <li>既定は「1 回だけ再生して最後のコマで止まる」動きです。暗転は黒いまま残り、明転は透明になって消えます。</li>
+        <li>既定は「1 回だけ再生して最後のコマで止まる」動きです。暗転は黒いまま残り、明転は透明になって消えます（プレビューは確かめやすいように、くり返し表示します）。</li>
         <li>暗転で場面を隠す → 背景を差し替える → 明転で見せる、と 2 枚 1 組で使うと自然につながります。</li>
       </ul>
       <h2>うまく作るコツ</h2>
@@ -251,6 +256,7 @@
         <li>「ぼかし」を上げると境界がやわらかく、下げるとくっきりします。</li>
         <li>「静止の秒数」は、動きが終わったあと最後の絵を出しておく時間です。場面を差し替える余裕をここで作ります。</li>
         <li>ディゾルブは粒がランダムなぶんファイルが重くなります。「粒の大きさ」を上げると軽くなります。</li>
+        <li>ココフォリアに上げられる画像は 5MB までです。超えたときは保存したあとに知らせるので、サイズ・なめらかさ・秒数を下げてください。</li>
       </ul>
     </div>
   </div>
@@ -260,10 +266,10 @@
   ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
   TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
   <a href="https://shiki365.github.io/">ほかのツールも見る（shiki365 のツール置き場）</a> ・ <a href="https://shiki365.github.io/#contact">不具合の報告・感想</a> ・ <a href="https://sabunomisogi.booth.pm/items/8891048">開発を応援する（BOOTH）</a><br>
-  <span id="version">v1</span> ・ 最終更新 2026-09-24
+  <span id="version">v1.1</span> ・ 最終更新 2026-09-24
 </footer>
 
-<script src="apng.v1.js"></script>
-<script src="app.v1.js"></script>
+<script src="apng.v2.js"></script>
+<script src="app.v2.js"></script>
 </body>
 </html>

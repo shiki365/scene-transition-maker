@@ -26,8 +26,9 @@
 ```
 docs/
 ├── index.html     画面とスタイル
-├── app.v1.js      効果の計算とプレビュー
-└── apng.v1.js     APNG の書き出し
+├── favicon.svg    ブラウザのタブに出るアイコン
+├── app.v2.js      効果の計算とプレビュー、元に戻す・自動保存（localStorage）
+└── apng.v2.js     APNG の書き出し（1 コマずつ圧縮するので、大きなサイズでもメモリを食わない）
 ```
 
 外部ライブラリは使っていません。圧縮はブラウザ標準の `CompressionStream` を使うので、読み込むファイルは 3 つだけです。
@@ -53,9 +54,9 @@ GitHub を使わない場合は、[Cloudflare Pages](https://pages.cloudflare.co
 ひとつだけ注意が要るのが**キャッシュ**です。「直したのに古い画面が出る」を避けるため、
 JavaScript を変更したときは**ファイル名の番号を上げて**ください。
 
-1. `app.v1.js` を `app.v2.js` にリネーム
-2. `index.html` の `<script src="app.v1.js">` を `app.v2.js` に変更
-3. ページ下部の `v1 ・ 最終更新 …` の表記も更新
+1. `app.v2.js` を `app.v3.js` にリネーム
+2. `index.html` の `<script src="app.v2.js">` を `app.v3.js` に変更
+3. ページ下部の `v1.1 ・ 最終更新 …` の表記も更新
 
 こうすると、訪問者のブラウザが古いファイルを掴んだままになることがありません。
 HTML そのものは数分〜10 分ほどキャッシュされることがあるので、直後の確認は `Ctrl+F5` で強制再読み込みしてください。

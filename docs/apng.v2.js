@@ -1,5 +1,5 @@
 /*!
- * apng.v1.js - minimal APNG writer for the 場面転換素材メーカー.
+ * apng.v2.js - minimal APNG writer for the 場面転換素材メーカー.
  *
  * Takes RGBA frames and produces an animated PNG. Frames after the first are
  * cropped to the rectangle that actually changed and written with
@@ -146,64 +146,84 @@
   }
 
   /**
-   * frames    : array of Uint8ClampedArray, each width*height*4 RGBA bytes
-   * delays    : per-frame delay in milliseconds (same length as frames)
-   * numPlays  : 0 = endless, 1 = play once and hold the last frame
-   * Returns a Blob of type image/png. Identical consecutive frames are merged.
+   * Streaming writer. Each frame is deflated as soon as it arrives and only the previous
+   * frame is kept, so a long 1920x1080 export no longer holds every raw frame (8 MB each).
+   *
+   *   const enc = APNG.encoder(width, height, numPlays);
+   *   await enc.add(rgba, delayMs);   // once per frame, in order; rgba must not change afterwards
+   *   const { blob, frames } = enc.finish();
+   *
+   * numPlays: 0 = endless, 1 = play once and hold the last frame.
+   * Identical consecutive frames are merged by extending the previous delay.
    */
-  async function encode(frames, width, height, delays, numPlays) {
-    const kept = [];
-    for (let i = 0; i < frames.length; i++) {
-      const box = i === 0 ? { x: 0, y: 0, w: width, h: height }
-        : changedBox(frames[i], frames[i - 1], width, height);
+  function encoder(width, height, numPlays) {
+    const kept = [];                    // { box, body (deflated), delay }
+    let previous = null;
+
+    async function add(rgba, delay) {
+      const box = previous ? changedBox(rgba, previous, width, height) : { x: 0, y: 0, w: width, h: height };
+      previous = rgba;
       if (!box) {                       // nothing moved: extend the previous delay
-        kept[kept.length - 1].delay += delays[i];
-        continue;
+        kept[kept.length - 1].delay += delay;
+        return;
       }
-      kept.push({ data: crop(frames[i], width, box), box, delay: delays[i] });
+      const body = await deflate(filterRows(crop(rgba, width, box), box.w, box.h));
+      kept.push({ box, body, delay });
     }
 
-    const ihdr = new Uint8Array(13);
-    const view = new DataView(ihdr.buffer);
-    view.setUint32(0, width);
-    view.setUint32(4, height);
-    ihdr[8] = 8;      // bit depth
-    ihdr[9] = 6;      // colour type: RGBA
-    const actl = new Uint8Array(8);
-    const actlView = new DataView(actl.buffer);
-    actlView.setUint32(0, kept.length);
-    actlView.setUint32(4, numPlays);
+    function finish() {
+      const ihdr = new Uint8Array(13);
+      const view = new DataView(ihdr.buffer);
+      view.setUint32(0, width);
+      view.setUint32(4, height);
+      ihdr[8] = 8;      // bit depth
+      ihdr[9] = 6;      // colour type: RGBA
+      const actl = new Uint8Array(8);
+      const actlView = new DataView(actl.buffer);
+      actlView.setUint32(0, kept.length);
+      actlView.setUint32(4, numPlays);
 
-    const parts = [
-      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      chunk("IHDR", ihdr),
-      chunk("acTL", actl),
-    ];
+      const parts = [
+        new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        chunk("IHDR", ihdr),
+        chunk("acTL", actl),
+      ];
 
-    let sequence = 0;
-    for (let i = 0; i < kept.length; i++) {
-      const { data, box, delay } = kept[i];
-      const fctl = new Uint8Array(26);
-      const f = new DataView(fctl.buffer);
-      f.setUint32(0, sequence++);
-      f.setUint32(4, box.w);
-      f.setUint32(8, box.h);
-      f.setUint32(12, box.x);
-      f.setUint32(16, box.y);
-      f.setUint16(20, Math.max(1, Math.round(delay)));
-      f.setUint16(22, 1000);            // delay is in milliseconds
-      fctl[24] = 0;                     // dispose: leave the frame in place
-      fctl[25] = 0;                     // blend: replace, do not composite
-      parts.push(chunk("fcTL", fctl));
+      let sequence = 0;
+      for (let i = 0; i < kept.length; i++) {
+        const { body, box, delay } = kept[i];
+        const fctl = new Uint8Array(26);
+        const f = new DataView(fctl.buffer);
+        f.setUint32(0, sequence++);
+        f.setUint32(4, box.w);
+        f.setUint32(8, box.h);
+        f.setUint32(12, box.x);
+        f.setUint32(16, box.y);
+        f.setUint16(20, Math.max(1, Math.round(delay)));
+        f.setUint16(22, 1000);            // delay is in milliseconds
+        fctl[24] = 0;                     // dispose: leave the frame in place
+        fctl[25] = 0;                     // blend: replace, do not composite
+        parts.push(chunk("fcTL", fctl));
+        parts.push(i === 0 ? chunk("IDAT", body)
+          : chunk("fdAT", concat([be32(sequence++), body])));
+      }
 
-      const body = await deflate(filterRows(data, box.w, box.h));
-      parts.push(i === 0 ? chunk("IDAT", body)
-        : chunk("fdAT", concat([be32(sequence++), body])));
+      parts.push(chunk("IEND", new Uint8Array(0)));
+      return { blob: new Blob(parts, { type: "image/png" }), frames: kept.length };
     }
 
-    parts.push(chunk("IEND", new Uint8Array(0)));
-    return { blob: new Blob(parts, { type: "image/png" }), frames: kept.length };
+    return { add, finish };
   }
 
-  global.APNG = { encode };
+  /**
+   * All frames at once (kept for callers that already hold them).
+   * frames: array of Uint8ClampedArray (width*height*4 RGBA), delays: milliseconds per frame.
+   */
+  async function encode(frames, width, height, delays, numPlays) {
+    const enc = encoder(width, height, numPlays);
+    for (let i = 0; i < frames.length; i++) await enc.add(frames[i], delays[i]);
+    return enc.finish();
+  }
+
+  global.APNG = { encode, encoder };
 })(window);
