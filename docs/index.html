@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>場面転換素材メーカー | ココフォリア向け APNG ジェネレータ</title>
-<meta name="description" content="暗転・ワイプ・アイリスなど、TRPGオンラインセッション用の場面転換アニメーション素材（APNG）をブラウザだけで作れる無料ツールです。">
+<title>場面転換素材メーカー | ココフォリア向け 場面転換アニメーション（WebP / APNG）</title>
+<meta name="description" content="暗転・ワイプ・アイリスから、血のしたたり・星形・水玉まで、TRPGオンラインセッション用の場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れる無料ツールです。">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="場面転換素材メーカー">
 <meta property="og:title" content="場面転換素材メーカー">
-<meta property="og:description" content="暗転・ワイプ・アイリスなどの場面転換アニメーション素材（APNG）を、ブラウザだけで作れます。18種類のプリセット・無料・登録不要。">
+<meta property="og:description" content="暗転・ワイプ・アイリスから血のしたたり・星形・水玉まで、場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れます。42種類のプリセット・無料・登録不要。">
 <meta property="og:url" content="https://shiki365.github.io/scene-transition-maker/">
 <meta property="og:image" content="https://shiki365.github.io/scene-transition-maker/ogp.png">
 <meta property="og:image:width" content="1200">
@@ -82,6 +82,7 @@
                         place-items: center; font-size: 44px; font-weight: 700;
                         letter-spacing: .3em; color: #ffffff40; }
   .stage.light { background: #f2f2f4; }
+  .stage.custom { background: #000 center / cover no-repeat; }
   .stage.checker {
     background-color: #cfcfd6;
     background-image: linear-gradient(45deg, #9a9aa5 25%, transparent 25% 75%, #9a9aa5 75%),
@@ -111,7 +112,7 @@
 <header>
   <a class="home-link" href="https://shiki365.github.io/">‹ shiki365 のツール置き場</a>
   <h1>場面転換素材メーカー</h1>
-  <p>暗転・ワイプ・アイリスなどの場面転換アニメーション（APNG）を作れます。設定を変えるとその場でプレビューされ、「ダウンロード」で保存できます。すべてブラウザの中だけで処理され、画像がどこかに送られることはありません。</p>
+  <p>暗転・ワイプ・アイリスなどの場面転換アニメーション（WebP / APNG）を作れます。設定を変えるとその場でプレビューされ、「ダウンロード」で保存できます。すべてブラウザの中だけで処理され、画像がどこかに送られることはありません。</p>
 </header>
 
 <main>
@@ -127,6 +128,10 @@
     <fieldset>
       <legend>見た目</legend>
       <div class="row"><label for="color">色</label><input type="color" id="color"></div>
+      <div class="row"><label for="edge">境目の光</label>
+        <span><input type="checkbox" id="edge"> <span class="note">動く境目を別の色で光らせる</span></span>
+      </div>
+      <div class="row" id="rowEdgeColor"><label for="edgeColor">光の色</label><input type="color" id="edgeColor"></div>
       <div class="row"><label for="size">出力サイズ</label>
         <select id="size">
           <option value="1280x720">1280 × 720</option>
@@ -137,6 +142,15 @@
       </div>
       <div class="row"><label for="feather">ぼかし</label>
         <span class="with-value"><input type="range" id="feather" min="1" max="255" step="1"><output id="featherOut"></output></span>
+      </div>
+      <div class="row" id="rowVariant"><label for="variant" id="variantLabel">形</label><select id="variant"></select></div>
+      <div class="row" id="rowOrder"><label for="order">並び順</label>
+        <select id="order">
+          <option value="direction">向きに沿って</option>
+          <option value="center">中心から</option>
+          <option value="random">ばらばら</option>
+          <option value="checker">市松（2 回に分けて）</option>
+        </select>
       </div>
       <div class="row" id="rowDirection"><label for="direction">向き</label>
         <select id="direction">
@@ -153,8 +167,11 @@
       <div class="row" id="rowAxis"><label for="axis">方向</label>
         <select id="axis"><option value="y">上下</option><option value="x">左右</option></select>
       </div>
-      <div class="row" id="rowCount"><label for="count">本数</label>
+      <div class="row" id="rowCount"><label for="count" id="countLabel">本数</label>
         <span class="with-value"><input type="range" id="count" min="2" max="40" step="1"><output id="countOut"></output></span>
+      </div>
+      <div class="row" id="rowAmount"><label for="amount" id="amountLabel">波の高さ</label>
+        <span class="with-value"><input type="range" id="amount" min="0" max="100" step="1"><output id="amountOut"></output></span>
       </div>
       <div class="row" id="rowBlock"><label for="block">粒の大きさ</label>
         <span class="with-value"><input type="range" id="block" min="1" max="60" step="1"><output id="blockOut"></output></span>
@@ -171,6 +188,10 @@
       <div class="row" id="rowBand"><label for="band">帯の幅</label>
         <span class="with-value"><input type="range" id="band" min="10" max="255" step="5"><output id="bandOut"></output></span>
       </div>
+      <div class="row" id="rowSeed"><label for="reseed">模様</label>
+        <span class="with-value"><button type="button" class="small" id="reseed">別の模様にする</button><output id="seedOut"></output></span>
+        <input type="hidden" id="seed">
+      </div>
     </fieldset>
 
     <fieldset>
@@ -178,7 +199,7 @@
       <div class="row"><label for="duration">動きの秒数</label>
         <span class="with-value"><input type="range" id="duration" min="0.1" max="3" step="0.05"><output id="durationOut"></output></span>
       </div>
-      <div class="row"><label for="hold">静止の秒数</label>
+      <div class="row"><label for="hold" id="holdLabel">静止の秒数</label>
         <span class="with-value"><input type="range" id="hold" min="0" max="3" step="0.1"><output id="holdOut"></output></span>
       </div>
       <div class="row"><label for="ease">速度変化</label>
@@ -187,6 +208,10 @@
           <option value="linear">一定</option>
           <option value="in">だんだん速く</option>
           <option value="out">だんだん遅く</option>
+          <option value="bounce">はずむ</option>
+          <option value="flicker">ちらついてから覆う</option>
+          <option value="lightning">稲光（光って消える）</option>
+          <option value="heartbeat">鼓動（ドクン、ドクン）</option>
         </select>
       </div>
       <div class="row"><label for="fps">なめらかさ</label>
@@ -209,6 +234,15 @@
       <div class="row"><label for="fontSize">文字サイズ</label>
         <span class="with-value"><input type="range" id="fontSize" min="16" max="200" step="2"><output id="fontSizeOut"></output></span>
       </div>
+      <div class="row"><label for="font">書体</label>
+        <select id="font"><option value="gothic">ゴシック</option><option value="mincho">明朝</option></select>
+      </div>
+      <div class="row"><label for="textPos">位置</label>
+        <select id="textPos"><option value="center">まん中</option><option value="bottom">下（字幕）</option><option value="top">上</option></select>
+      </div>
+      <div class="row"><label for="textOutline">ふち</label>
+        <span><input type="checkbox" id="textOutline"> <span class="note">文字にふちをつける（背景が透けるときに）</span></span>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -218,11 +252,30 @@
           <option value="cover">覆う（隠す側）</option>
           <option value="uncover">開く（見せる側）</option>
           <option value="sweep">通過する</option>
+          <option value="roundtrip">閉じて開く（往復）</option>
         </select>
       </div>
+      <div class="row"><label for="reach">どこまで</label>
+        <span class="with-value"><input type="range" id="reach" min="0" max="100" step="1" aria-describedby="reachNote"><output id="reachOut"></output></span>
+      </div>
+      <p class="desc" id="reachNote">100% で画面をすべて覆います。下げると途中で止まります（黒帯・ふちだけ暗くする など）。</p>
       <div class="row"><label for="invert">反転</label>
         <span><input type="checkbox" id="invert"> <span class="note">進む向きを逆にする</span></span>
       </div>
+      <div class="row"><label for="reverse">逆再生</label>
+        <span><input type="checkbox" id="reverse"> <span class="note">最後から最初へ再生する（対になる素材づくりに）</span></span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>書き出し</legend>
+      <div class="row"><label for="format">形式</label>
+        <select id="format">
+          <option value="webp">WebP（おすすめ・軽い）</option>
+          <option value="apng">APNG（.png）</option>
+        </select>
+      </div>
+      <p class="desc" id="formatNote"></p>
     </fieldset>
   </form>
 
@@ -232,7 +285,9 @@
         <button type="button" data-bg="scene" aria-pressed="true">シーン風</button>
         <button type="button" data-bg="light">白</button>
         <button type="button" data-bg="checker">市松</button>
+        <button type="button" data-bg="custom" aria-pressed="false" title="手元の画像をプレビューの背景にする（どこにも送られません）">画像…</button>
       </span>
+      <input type="file" id="bgFile" accept="image/*" hidden>
       <span class="spacer"></span>
       <button type="button" class="small" id="undo" title="元に戻す (Ctrl+Z)">↶ 戻す</button>
       <button type="button" class="small" id="redo" title="やり直す (Ctrl+Y)">↷ 進む</button>
@@ -246,17 +301,20 @@
       <h2>使い方</h2>
       <ul>
         <li>プリセットを選び、色や秒数を調整して「ダウンロード」を押します。</li>
-        <li>保存されるのは APNG（中身がアニメーションの <code>.png</code>）です。そのまま画像としてアップロードできます。</li>
+        <li>保存されるのは動く WebP（<code>.webp</code>）です。APNG の数分の 1 の大きさで、ココフォリアにそのまま画像としてアップロードできます。APNG（<code>.png</code>）も選べます。</li>
         <li>既定は「1 回だけ再生して最後のコマで止まる」動きです。暗転は黒いまま残り、明転は透明になって消えます（プレビューは確かめやすいように、くり返し表示します）。</li>
-        <li>暗転で場面を隠す → 背景を差し替える → 明転で見せる、と 2 枚 1 組で使うと自然につながります。</li>
+        <li>暗転で場面を隠す → 背景を差し替える → 明転で見せる、と 2 枚 1 組で使うと自然につながります。対になる素材は「逆再生」にチェックを入れて、もう一度保存すると作れます。</li>
+        <li>プレビューの「画像…」で手元の画像を背景にすると、実際の場面に重ねたときの見え方を確かめられます（画像はどこにも送られません）。</li>
       </ul>
       <h2>うまく作るコツ</h2>
       <ul>
         <li>画面いっぱいに広げて使う想定です。ベタ塗り中心の効果なら小さいサイズでもきれいなので、640 × 360 にするとファイルがかなり軽くなります。</li>
         <li>「ぼかし」を上げると境界がやわらかく、下げるとくっきりします。</li>
-        <li>「静止の秒数」は、動きが終わったあと最後の絵を出しておく時間です。場面を差し替える余裕をここで作ります。</li>
-        <li>ディゾルブは粒がランダムなぶんファイルが重くなります。「粒の大きさ」を上げると軽くなります。</li>
-        <li>ココフォリアに上げられる画像は 5MB までです。超えたときは保存したあとに知らせるので、サイズ・なめらかさ・秒数を下げてください。</li>
+        <li>「静止の秒数」は、動きが終わったあと最後の絵を出しておく時間です。場面を差し替える余裕をここで作ります。「閉じて開く」では、閉じきったところで止める時間になります。</li>
+        <li>「どこまで」を下げると、画面を覆いきらずに止まります。上下の黒帯や、ふちだけ暗くする演出はこれで作っています。</li>
+        <li>「境目の光」を入れると、動く境目が別の色で光ります（焼け焦げ・光るワイプ）。</li>
+        <li>ディゾルブや墨のにじみなどランダムな模様は「別の模様にする」で作り直せます。</li>
+        <li>ココフォリアに上げられる画像は 5MB までです。APNG は 5MB を超えるとアップロード時に圧縮されて動かなくなるので、重いときは WebP にしてください。超えたときは保存したあとに知らせます。</li>
       </ul>
     </div>
   </div>
@@ -266,10 +324,11 @@
   ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
   TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
   <a href="https://shiki365.github.io/">ほかのツールも見る（shiki365 のツール置き場）</a> ・ <a href="https://shiki365.github.io/#contact">不具合の報告・感想</a> ・ <a href="https://sabunomisogi.booth.pm/items/8891048">開発を応援する（BOOTH）</a><br>
-  <span id="version">v1.1</span> ・ 最終更新 2026-09-24
+  <span id="version">v2.0</span> ・ 最終更新 2026-09-29
 </footer>
 
 <script src="apng.v2.js"></script>
-<script src="app.v2.js"></script>
+<script src="webp.v1.js"></script>
+<script src="app.v3.js"></script>
 </body>
 </html>
