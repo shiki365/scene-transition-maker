@@ -1,5 +1,5 @@
 /*!
- * app.v4.js - 場面転換素材メーカー (browser edition)
+ * app.v5.js - 場面転換素材メーカー (browser edition)
  *
  * Effects are not drawn one by one. Each one is a "progress field": a
  * greyscale image whose pixel value says when that pixel is reached
@@ -10,6 +10,7 @@
  * render exactly as they did in v1.x. The shapes, timing curves and options
  * added in v2.0 (wave, ink, drip, clock, spiral, form, tiles; round trip,
  * reverse, reach, edge colour, caption styles) exist only in the browser.
+ * v2.2 adds rings and the colour strobe (the whole layer switches between two colours).
  */
 (function () {
   "use strict";
@@ -22,9 +23,10 @@
     fontSize: null, loop: 1,
     variant: "", order: "direction", amount: 50, reach: 100, reverse: false,
     edge: false, edgeColor: "#ff8a1f", font: "gothic", textPos: "center", textOutline: false,
+    strobe: 0, color2: "#000000",
   };
 
-  const GROUPS = ["暗転・明転", "ワイプ", "幕・帯", "形で閉じる・開く", "模様", "ホラー・雰囲気", "テロップ", "サイバー"];
+  const GROUPS = ["暗転・明転", "ワイプ", "幕・帯", "形で閉じる・開く", "模様", "ホラー・雰囲気", "テロップ", "サイバー", "異空間・反転"];
 
   // A preset that sets `loop` itself needs it (a heartbeat has to repeat), so it overrides
   // the user's choice; every other preset leaves the loop setting alone.
@@ -148,6 +150,17 @@
     "caption-cyber": { group: 7, desc: "テロップ（サイバー）：暗転して等幅の文字を表示",
       shape: "uniform", mode: "cover", color: "#03060c", duration: 0.8, hold: 1.6,
       text: "SYSTEM REBOOT", font: "mono", textColor: "#39ff88" },
+
+    // ---- v2.2
+    "flip-over": { group: 8, desc: "裏返る：上下から一気に閉じて光る 1 本の線になり、また開く（空間がひっくり返る合図に）",
+      shape: "split", mode: "roundtrip", axis: "y", color: "#0c0618", feather: 30, reach: 96,
+      edge: true, edgeColor: "#f3eaff", ease: "in", duration: 0.35, hold: 0.3 },
+    "negative": { group: 8, desc: "ネガのちらつき：白と黒が入れ替わりながら点滅して明ける（点滅します）",
+      shape: "uniform", mode: "cover", color: "#ffffff", strobe: 4, color2: "#000000",
+      ease: "negative", reach: 88, duration: 1.6 },
+    "inverse-ripple": { group: 8, desc: "反転の波紋：覆う輪と透ける輪が交互に中心から広がり、すき間が埋まる",
+      shape: "rings", mode: "cover", color: "#12002a", count: 8, feather: 12,
+      edge: true, edgeColor: "#c9a2ff", ease: "in-out", duration: 1.2, hold: 0.5 },
   };
 
   // Choices that change meaning with the shape: [value, label] pairs plus the row's label.
@@ -163,6 +176,7 @@
     blinds: ["本数", 2, 40], wave: ["波の数", 1, 16], drip: ["しずくの数", 4, 60],
     tiles: ["横のマス数", 3, 40], spiral: ["巻き数", 1, 8],
     glitch: ["帯の数", 6, 60], rain: ["列の数", 8, 120], scan: ["走査線の数", 8, 180], hex: ["横のマス数", 4, 40],
+    rings: ["輪の数", 2, 24],
   };
   const AMOUNTS = { wave: "波の高さ", ink: "にじみの強さ", drip: "しずくの長さ" };
 
@@ -197,7 +211,12 @@
     "flicker": flicker,
     "lightning": p => Math.min(1, Math.max(burst(p, 0.02, 0.12), 0.6 * burst(p, 0.2, 0.1), burst(p, 0.36, 0.4))),
     "heartbeat": p => Math.max(bump(p, 0.14, 0.12), 0.7 * bump(p, 0.4, 0.12)),
+    // Up at once, held while the colours switch (see STROBE_END), then a fall back to clear.
+    "negative": p => (p < 0.03 ? p / 0.03 : p < STROBE_END ? 1 : (1 - (p - STROBE_END) / (1 - STROBE_END)) ** 2),
   };
+
+  // The colour strobe switches colours evenly over this part of the move and keeps the last one after it.
+  const STROBE_END = 0.75;
 
   const PREVIEW_WIDTH = 480;
   const PREVIEW_PAUSE = 1200;                       // ms on the last frame before the preview repeats
@@ -601,6 +620,16 @@
         const value = (Math.floor(v * lines) % 2) * 0.5 + v * 0.5;
         for (let x = 0; x < w; x++) values[y * w + x] = value;
       }
+    } else if (spec.shape === "rings") {
+      // Rings round the centre: every other ring grows outwards first, then the rings in between.
+      const far = farthest(cx, cy, w, h);
+      const n = Math.max(1, spec.count);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const r = Math.min(1, Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / far);
+          values[y * w + x] = (Math.min(n - 1, Math.floor(r * n)) % 2) * 0.5 + r * 0.5;
+        }
+      }
     } else if (spec.shape === "hex") {
       // Flat-topped hexagons, each growing from its own centre like the tiles, in the same orders.
       const size = w / (Math.max(1, spec.count) * 1.5);   // centre to corner, in pixels
@@ -752,7 +781,8 @@
   function* frameStream(spec) {
     const [w, h] = spec.size;
     const { field, lo, hi } = buildField(spec);
-    const [r, g, b] = parseColor(spec.color);
+    const first = parseColor(spec.color);
+    const second = spec.strobe > 0 ? parseColor(spec.color2 || "#000000") : first;
     const [er, eg, eb] = parseColor(spec.edgeColor || "#000000");
     const ease = EASINGS[spec.ease] || EASINGS["in-out"];
     const layer = spec.text ? textLayer(spec) : null;
@@ -762,6 +792,9 @@
 
     for (const step of timeline(spec)) {
       const t = ease(step.p) * reach;
+      // With a strobe, the move is cut into `strobe` even parts that take the two colours in turn.
+      const part = spec.strobe > 0 ? Math.min(spec.strobe - 1, Math.floor(step.p / STROBE_END * spec.strobe)) : 0;
+      const [r, g, b] = part % 2 ? second : first;
       const lut = spec.mode === "sweep"
         ? sweepLut(t, spec.band, lo, hi) : coverLut(t, spec.feather, lo, hi);
       // Colour and alpha for each field value, so the pixel loop is a plain table lookup.
@@ -864,7 +897,7 @@
   for (const id of ["preset", "desc", "color", "edge", "edgeColor", "size", "feather", "direction", "axis",
     "count", "block", "iris", "centerX", "centerY", "band", "variant", "order", "amount", "seed",
     "duration", "hold", "ease", "fps", "loop", "text", "textColor", "fontSize", "font", "textPos",
-    "textOutline", "mode", "invert", "reverse", "reach", "format"]) {
+    "textOutline", "mode", "invert", "reverse", "reach", "format", "strobe", "color2"]) {
     el[id] = $(id);
   }
   const stage = $("stage"), status = $("status");
@@ -945,6 +978,8 @@
     el.invert.checked = p.invert;
     el.reverse.checked = p.reverse;
     el.reach.value = p.reach;
+    el.strobe.value = p.strobe;
+    el.color2.value = p.color2;
     syncRows();
   }
 
@@ -959,7 +994,7 @@
       rowCount: shape in COUNTS,
       rowBlock: shape === "noise",
       rowIris: shape === "radial",
-      rowCenter: ["radial", "form", "clock", "spiral"].includes(shape)
+      rowCenter: ["radial", "form", "clock", "spiral", "rings"].includes(shape)
         || (shape === "ink" && variant === "circle") || (tiled && order === "center"),
       rowVariant: shape in VARIANTS,
       rowOrder: tiled,
@@ -967,6 +1002,7 @@
       rowSeed: ["noise", "ink", "drip", "glitch", "rain"].includes(shape) || (tiled && order === "random"),
       rowBand: el.mode.value === "sweep",
       rowEdgeColor: el.edge.checked,
+      rowColor2: Number(el.strobe.value) > 0,
     };
     for (const [row, visible] of Object.entries(show)) $(row).classList.toggle("hidden", !visible);
     $("featherOut").value = el.feather.value;
@@ -976,6 +1012,7 @@
     $("amountOut").value = el.amount.value;
     $("seedOut").value = "#" + el.seed.value;
     $("reachOut").value = el.reach.value + "%";
+    $("strobeOut").value = Number(el.strobe.value) > 0 ? el.strobe.value + "回" : "しない";
     $("durationOut").value = Number(el.duration.value).toFixed(2) + "s";
     $("holdOut").value = Number(el.hold.value).toFixed(1) + "s";
     $("fontSizeOut").value = el.fontSize.value;
@@ -1022,6 +1059,8 @@
       font: el.font.value,
       textPos: el.textPos.value,
       textOutline: el.textOutline.checked,
+      strobe: Number(el.strobe.value),
+      color2: el.color2.value,
     };
   }
 

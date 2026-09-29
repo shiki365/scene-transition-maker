@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="場面転換素材メーカー">
 <meta property="og:title" content="場面転換素材メーカー">
-<meta property="og:description" content="暗転・ワイプ・アイリスから血のしたたり・星形・水玉まで、場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れます。48種類のプリセット・無料・登録不要。">
+<meta property="og:description" content="暗転・ワイプ・アイリスから血のしたたり・星形・水玉まで、場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れます。51種類のプリセット・無料・登録不要。">
 <meta property="og:url" content="https://shiki365.github.io/scene-transition-maker/">
 <meta property="og:image" content="https://shiki365.github.io/scene-transition-maker/ogp.png">
 <meta property="og:image:width" content="1200">
@@ -132,6 +132,9 @@
         <span><input type="checkbox" id="edge"> <span class="note">動く境目を別の色で光らせる</span></span>
       </div>
       <div class="row" id="rowEdgeColor"><label for="edgeColor">光の色</label><input type="color" id="edgeColor"></div>
+      <div class="row"><label for="strobe">色の入れ替え</label>
+        <span class="with-value"><input type="range" id="strobe" min="0" max="8" step="1"><output id="strobeOut"></output></span></div>
+      <div class="row" id="rowColor2"><label for="color2">もう 1 色</label><input type="color" id="color2"></div>
       <div class="row"><label for="size">出力サイズ</label>
         <select id="size">
           <option value="1280x720">1280 × 720</option>
@@ -324,11 +327,11 @@
   ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
   TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
   <a href="https://shiki365.github.io/">ほかのツールも見る（shiki365 のツール置き場）</a> ・ <a href="https://shiki365.github.io/#contact">不具合の報告・感想</a> ・ <a href="https://sabunomisogi.booth.pm/items/8891048">開発を応援する（BOOTH）</a><br>
-  <span id="version">v2.1</span> ・ 最終更新 2026-09-29
+  <span id="version">v2.2</span> ・ 最終更新 2026-09-29
 </footer>
 
 <script src="apng.v2.js"></script>
 <script src="webp.v1.js"></script>
-<script src="app.v4.js"></script>
+<script src="app.v5.js"></script>
 </body>
 </html>
