@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="場面転換素材メーカー">
 <meta property="og:title" content="場面転換素材メーカー">
-<meta property="og:description" content="暗転・ワイプ・アイリスから血のしたたり・星形・水玉まで、場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れます。51種類のプリセット・無料・登録不要。">
+<meta property="og:description" content="暗転・ワイプ・アイリスから血のしたたり・星形・水玉まで、場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れます。53種類のプリセット・無料・登録不要。">
 <meta property="og:url" content="https://shiki365.github.io/scene-transition-maker/">
 <meta property="og:image" content="https://shiki365.github.io/scene-transition-maker/ogp.png">
 <meta property="og:image:width" content="1200">
@@ -238,8 +238,37 @@
         <span class="with-value"><input type="range" id="fontSize" min="16" max="200" step="2"><output id="fontSizeOut"></output></span>
       </div>
       <div class="row"><label for="font">書体</label>
-        <select id="font"><option value="gothic">ゴシック</option><option value="mincho">明朝</option><option value="mono">等幅（英数字向け）</option></select>
+        <select id="font">
+          <optgroup label="PC の書体">
+            <option value="gothic">ゴシック</option><option value="mincho">明朝</option><option value="mono">等幅（英数字向け）</option>
+            <option value="pc">名前で指定（PC のフォント）</option>
+          </optgroup>
+          <optgroup label="ゴシック・丸・ポップ（Google Fonts）">
+            <option value="notosans">Noto Sans JP</option><option value="zenmaru">Zen Maru Gothic（丸）</option>
+            <option value="mplusround">M PLUS Rounded 1c（丸）</option><option value="kosugimaru">Kosugi Maru（丸）</option>
+            <option value="delagothic">Dela Gothic One（極太）</option><option value="mochiypop">Mochiy Pop One（ポップ）</option>
+            <option value="reggae">Reggae One（力強い）</option><option value="dotgothic">DotGothic16（ドット）</option>
+          </optgroup>
+          <optgroup label="手書き（Google Fonts）">
+            <option value="hachimaru">Hachi Maru Pop（丸文字）</option><option value="klee">Klee One（教科書体）</option>
+            <option value="kurenaido">Zen Kurenaido（筆ペン）</option>
+          </optgroup>
+          <optgroup label="明朝・筆・和風（Google Fonts）">
+            <option value="notoserif">Noto Serif JP</option><option value="shippori">しっぽり明朝 B1</option>
+            <option value="zenold">Zen Old Mincho（古風）</option><option value="kaisei">Kaisei Decol（装飾）</option>
+            <option value="zenantique">Zen Antique（活版）</option><option value="yujisyuku">Yuji Syuku（筆）</option>
+            <option value="yujiboku">Yuji Boku（筆・太）</option>
+          </optgroup>
+          <optgroup label="英数字だけ（Google Fonts。かなは代わりの書体）">
+            <option value="orbitron">Orbitron（SF）</option><option value="sharetech">Share Tech Mono（端末）</option>
+            <option value="pressstart">Press Start 2P（ドット）</option><option value="cinzel">Cinzel（碑文）</option>
+          </optgroup>
+        </select>
       </div>
+      <div class="row" id="rowFontName"><label for="fontName">フォント名</label>
+        <span class="pc-font"><input type="text" id="fontName" placeholder="例）BIZ UDPGothic" autocomplete="off" spellcheck="false"><button type="button" class="small" data-pc-fonts>一覧から選ぶ</button></span>
+      </div>
+      <p class="note">Google Fonts の書体は、選んだときにだけ Google から読み込みます（文字や画像は送りません）。PC のフォントは、名前を入れるか「一覧から選ぶ」（Chrome / Edge）で選べます。</p>
       <div class="row"><label for="textPos">位置</label>
         <select id="textPos"><option value="center">まん中</option><option value="bottom">下（字幕）</option><option value="top">上</option></select>
       </div>
@@ -327,11 +356,12 @@
   ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
   TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
   <a href="https://shiki365.github.io/">ほかのツールも見る（shiki365 のツール置き場）</a> ・ <a href="https://shiki365.github.io/#contact">不具合の報告・感想</a> ・ <a href="https://sabunomisogi.booth.pm/items/8891048">開発を応援する（BOOTH）</a><br>
-  <span id="version">v2.2</span> ・ 最終更新 2026-09-29
+  <span id="version">v2.3</span> ・ 最終更新 2026-09-29
 </footer>
 
 <script src="apng.v2.js"></script>
 <script src="webp.v1.js"></script>
-<script src="app.v5.js"></script>
+<script src="app.v6.js"></script>
+<script src="pcfonts.v1.js"></script>
 </body>
 </html>

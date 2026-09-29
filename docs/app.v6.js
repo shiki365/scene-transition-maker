@@ -1,5 +1,5 @@
 /*!
- * app.v5.js - 場面転換素材メーカー (browser edition)
+ * app.v6.js - 場面転換素材メーカー (browser edition)
  *
  * Effects are not drawn one by one. Each one is a "progress field": a
  * greyscale image whose pixel value says when that pixel is reached
@@ -11,6 +11,7 @@
  * added in v2.0 (wave, ink, drip, clock, spiral, form, tiles; round trip,
  * reverse, reach, edge colour, caption styles) exist only in the browser.
  * v2.2 adds rings and the colour strobe (the whole layer switches between two colours).
+ * "turn" is the one shape whose field moves: it is rebuilt for every frame at that frame's angle.
  */
 (function () {
   "use strict";
@@ -23,7 +24,7 @@
     fontSize: null, loop: 1,
     variant: "", order: "direction", amount: 50, reach: 100, reverse: false,
     edge: false, edgeColor: "#ff8a1f", font: "gothic", textPos: "center", textOutline: false,
-    strobe: 0, color2: "#000000",
+    strobe: 0, color2: "#000000", edgeSolid: false, fontName: "",
   };
 
   const GROUPS = ["暗転・明転", "ワイプ", "幕・帯", "形で閉じる・開く", "模様", "ホラー・雰囲気", "テロップ", "サイバー", "異空間・反転"];
@@ -152,9 +153,17 @@
       text: "SYSTEM REBOOT", font: "mono", textColor: "#39ff88" },
 
     // ---- v2.2
-    "flip-over": { group: 8, desc: "裏返る：上下から一気に閉じて光る 1 本の線になり、また開く（空間がひっくり返る合図に）",
-      shape: "split", mode: "roundtrip", axis: "y", color: "#0c0618", feather: 30, reach: 96,
-      edge: true, edgeColor: "#f3eaff", ease: "in", duration: 0.35, hold: 0.3 },
+    // The flips close on a glowing line and stop there; the open one starts from that same line,
+    // so the scene can be switched in between. edgeSolid keeps the line opaque while it waits.
+    "flip-over": { group: 8, desc: "裏返る（閉じる）：上下から一気に閉じて、光る 1 本の線で止まる（空間がひっくり返る合図に）",
+      shape: "split", mode: "cover", axis: "y", color: "#0c0618", feather: 30, reach: 96, edgeSolid: true,
+      edge: true, edgeColor: "#f3eaff", ease: "in", duration: 0.35, hold: 0.5 },
+    "flip-open": { group: 8, desc: "裏返る（開く）：光る 1 本の線から上下に開く（「閉じる」「回って裏返る」のあとに）",
+      shape: "split", mode: "cover", axis: "y", color: "#0c0618", feather: 30, reach: 96, edgeSolid: true,
+      edge: true, edgeColor: "#f3eaff", ease: "in", duration: 0.35, reverse: true },
+    "flip-turn": { group: 8, desc: "回って裏返る（閉じる）：半回転しながら閉じて、光る 1 本の線で止まる（開くのは「裏返る（開く）」で）",
+      shape: "turn", mode: "cover", color: "#0c0618", feather: 30, reach: 96, amount: 50, edgeSolid: true,
+      edge: true, edgeColor: "#f3eaff", ease: "in-out", duration: 0.6, hold: 0.5 },
     "negative": { group: 8, desc: "ネガのちらつき：白と黒が入れ替わりながら点滅して明ける（点滅します）",
       shape: "uniform", mode: "cover", color: "#ffffff", strobe: 4, color2: "#000000",
       ease: "negative", reach: 88, duration: 1.6 },
@@ -178,7 +187,9 @@
     glitch: ["帯の数", 6, 60], rain: ["列の数", 8, 120], scan: ["走査線の数", 8, 180], hex: ["横のマス数", 4, 40],
     rings: ["輪の数", 2, 24],
   };
-  const AMOUNTS = { wave: "波の高さ", ink: "にじみの強さ", drip: "しずくの長さ" };
+  const AMOUNTS = { wave: "波の高さ", ink: "にじみの強さ", drip: "しずくの長さ", turn: "回る角度" };
+  // "turn": the amount slider (0..100) is the angle turned while closing, up to a full turn.
+  const turnDegrees = amount => amount * 3.6;
 
   function bounce(t) {
     const n = 7.5625, d = 2.75;
@@ -227,6 +238,71 @@
     mincho: '"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif',
     mono: '"Consolas","Menlo","Courier New","Yu Gothic UI","Meiryo",monospace',
   };
+  // Caption fonts from Google Fonts: [family, weight, fallback]. Loaded only when chosen, one weight each.
+  // The weights were checked against fonts.googleapis.com/css2 for status-bar-maker (2026-09-14).
+  const WEB_FONTS = {
+    notosans: ["Noto Sans JP", 700, "gothic"],
+    zenmaru: ["Zen Maru Gothic", 700, "gothic"],
+    mplusround: ["M PLUS Rounded 1c", 700, "gothic"],
+    kosugimaru: ["Kosugi Maru", 400, "gothic"],
+    delagothic: ["Dela Gothic One", 400, "gothic"],
+    mochiypop: ["Mochiy Pop One", 400, "gothic"],
+    reggae: ["Reggae One", 400, "gothic"],
+    dotgothic: ["DotGothic16", 400, "gothic"],
+    hachimaru: ["Hachi Maru Pop", 400, "gothic"],
+    klee: ["Klee One", 600, "gothic"],
+    kurenaido: ["Zen Kurenaido", 400, "gothic"],
+    notoserif: ["Noto Serif JP", 700, "mincho"],
+    shippori: ["Shippori Mincho B1", 700, "mincho"],
+    zenold: ["Zen Old Mincho", 700, "mincho"],
+    kaisei: ["Kaisei Decol", 700, "mincho"],
+    zenantique: ["Zen Antique", 400, "mincho"],
+    yujisyuku: ["Yuji Syuku", 400, "mincho"],
+    yujiboku: ["Yuji Boku", 400, "mincho"],
+    orbitron: ["Orbitron", 700, "gothic"],
+    sharetech: ["Share Tech Mono", 400, "mono"],
+    pressstart: ["Press Start 2P", 400, "gothic"],
+    cinzel: ["Cinzel", 700, "mincho"],
+  };
+  const quoteFamily = name => '"' + name.replace(/["\\]/g, "\\$&") + '"';
+
+  /** The canvas font for a caption. The three built-in choices keep their v2.x strings exactly. */
+  function captionFont(spec, size) {
+    const web = WEB_FONTS[spec.font];
+    if (web) return web[1] + " " + size + "px " + quoteFamily(web[0]) + "," + FONTS[web[2]];
+    if (spec.font === "pc" && spec.fontName) return "bold " + size + "px " + quoteFamily(spec.fontName) + "," + FONTS.gothic;
+    return "bold " + size + "px " + (FONTS[spec.font] || FONTS.gothic);
+  }
+
+  const fontLinks = new Set();
+  /**
+   * Make sure a Google Fonts caption font is ready before drawing (the canvas does not wait for it).
+   * Only the letters in the caption are fetched (unicode-range). Resolves false if it could not load.
+   */
+  async function ensureFont(spec) {
+    const web = WEB_FONTS[spec.font];
+    if (!web || !spec.text) return true;
+    const [family, weight] = web;
+    if (!fontLinks.has(family)) {
+      fontLinks.add(family);
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=" + family.replace(/ /g, "+") + ":wght@" + weight + "&display=block";
+      const ready = new Promise(resolve => { link.onload = resolve; link.onerror = resolve; });
+      document.head.append(link);
+      await ready;
+    }
+    const face = weight + " 40px " + quoteFamily(family);
+    try {
+      const found = await Promise.race([
+        document.fonts.load(face, spec.text),
+        new Promise(resolve => setTimeout(() => resolve([]), 10000)),
+      ]);
+      return found.length > 0;
+    } catch (err) {
+      return false;
+    }
+  }
   // How strongly the edge colour shows at each coverage value: none when clear or covered, full halfway.
   const EDGE = Uint8Array.from({ length: 256 }, (_, c) => Math.round(255 * Math.sin(Math.PI * c / 255)));
 
@@ -440,6 +516,19 @@
         const row = Math.min(bh - 1, Math.floor(y * bh / h)) * bw;
         for (let x = 0; x < w; x++) {
           field[y * w + x] = cells[row + Math.min(bw - 1, Math.floor(x * bw / w))];
+        }
+      }
+    } else if (spec.shape === "turn") {
+      // Two bars closing on a line through the centre, like "split", with the line at spec.angle.
+      // Their reach is measured to the farthest corner at that angle, so nothing is covered at t = 0.
+      const a = (spec.angle || 0) * Math.PI / 180;
+      const nx = -Math.sin(a), ny = Math.cos(a);
+      const reach = Math.abs(nx) * w / 2 + Math.abs(ny) * h / 2;
+      for (let y = 0; y < h; y++) {
+        const dy = (y + 0.5 - h / 2) * ny;
+        for (let x = 0; x < w; x++) {
+          const d = Math.abs((x + 0.5 - w / 2) * nx + dy);
+          field[y * w + x] = Math.max(0, Math.round(255 * (1 - d / reach)));
         }
       }
     } else if (spec.shape !== "uniform") {
@@ -707,7 +796,7 @@
     canvas.height = h;
     const g = canvas.getContext("2d", { willReadFrequently: true });
     const size = spec.fontSize || Math.max(16, Math.round(h * 0.09));
-    g.font = "bold " + size + "px " + (FONTS[spec.font] || FONTS.gothic);
+    g.font = captionFont(spec, size);
     g.textAlign = "center";
     g.textBaseline = "middle";
     const lines = spec.text.split("\n");
@@ -780,7 +869,7 @@
   /** Every frame in order as { pixels, delay }. */
   function* frameStream(spec) {
     const [w, h] = spec.size;
-    const { field, lo, hi } = buildField(spec);
+    let { field, lo, hi } = buildField(spec);
     const first = parseColor(spec.color);
     const second = spec.strobe > 0 ? parseColor(spec.color2 || "#000000") : first;
     const [er, eg, eb] = parseColor(spec.edgeColor || "#000000");
@@ -792,6 +881,11 @@
 
     for (const step of timeline(spec)) {
       const t = ease(step.p) * reach;
+      if (spec.shape === "turn") {
+        // Turn while closing, and keep turning the same way while a round trip opens again.
+        const turn = turnDegrees(spec.amount), e = ease(step.p);
+        ({ field, lo, hi } = buildField(Object.assign({}, spec, { angle: step.rising ? turn * e : turn * (2 - e) })));
+      }
       // With a strobe, the move is cut into `strobe` even parts that take the two colours in turn.
       const part = spec.strobe > 0 ? Math.min(spec.strobe - 1, Math.floor(step.p / STROBE_END * spec.strobe)) : 0;
       const [r, g, b] = part % 2 ? second : first;
@@ -804,6 +898,8 @@
         if (spec.edge) {
           const e = EDGE[c];
           if (e > a) a = e;
+          // A solid edge: opaque from the halfway point inwards, with only a soft glow outside it.
+          if (spec.edgeSolid && !uncover) a = c >= 128 ? 255 : Math.max(a, Math.min(255, 2 * e));
           tr[v] = r + Math.round((er - r) * e / 255);
           tg[v] = g + Math.round((eg - g) * e / 255);
           tb[v] = b + Math.round((eb - b) * e / 255);
@@ -897,7 +993,7 @@
   for (const id of ["preset", "desc", "color", "edge", "edgeColor", "size", "feather", "direction", "axis",
     "count", "block", "iris", "centerX", "centerY", "band", "variant", "order", "amount", "seed",
     "duration", "hold", "ease", "fps", "loop", "text", "textColor", "fontSize", "font", "textPos",
-    "textOutline", "mode", "invert", "reverse", "reach", "format", "strobe", "color2"]) {
+    "textOutline", "mode", "invert", "reverse", "reach", "format", "strobe", "color2", "fontName"]) {
     el[id] = $(id);
   }
   const stage = $("stage"), status = $("status");
@@ -1003,13 +1099,14 @@
       rowBand: el.mode.value === "sweep",
       rowEdgeColor: el.edge.checked,
       rowColor2: Number(el.strobe.value) > 0,
+      rowFontName: el.font.value === "pc",
     };
     for (const [row, visible] of Object.entries(show)) $(row).classList.toggle("hidden", !visible);
     $("featherOut").value = el.feather.value;
     $("countOut").value = el.count.value;
     $("blockOut").value = el.block.value + "px";
     $("bandOut").value = el.band.value;
-    $("amountOut").value = el.amount.value;
+    $("amountOut").value = shape === "turn" ? turnDegrees(Number(el.amount.value)) + "°" : el.amount.value;
     $("seedOut").value = "#" + el.seed.value;
     $("reachOut").value = el.reach.value + "%";
     $("strobeOut").value = Number(el.strobe.value) > 0 ? el.strobe.value + "回" : "しない";
@@ -1028,6 +1125,7 @@
     const [w, h] = el.size.value.split("x").map(Number);
     return {
       shape: preset(el.preset.value).shape,
+      edgeSolid: preset(el.preset.value).edgeSolid,
       mode: el.mode.value,
       size: [w, h],
       color: el.color.value,
@@ -1061,11 +1159,22 @@
       textOutline: el.textOutline.checked,
       strobe: Number(el.strobe.value),
       color2: el.color2.value,
+      fontName: el.fontName.value.trim(),
     };
   }
 
-  function refresh() {
+  const FONT_MISSING = "（書体を読み込めなかったため、代わりの書体で表示しています。インターネットにつながっているか確かめてください）";
+  let drawing = 0;
+
+  async function refresh() {
+    const ticket = ++drawing;
     const spec = currentSpec();
+    let fontOk = true;
+    if (WEB_FONTS[spec.font] && spec.text) {
+      status.textContent = "書体を読み込んでいます…";
+      fontOk = await ensureFont(spec);
+      if (ticket !== drawing) return;                 // a newer change is already on its way
+    }
     const render = renderFrames(shrink(spec));
     player.load(render, spec.loop);
     const seconds = render.delays.reduce((sum, d) => sum + d, 0) / 1000;
@@ -1073,7 +1182,8 @@
     status.textContent = "出力 " + el.size.value
       + " / " + render.frames.length + "コマ"
       + " / " + seconds.toFixed(2) + "秒"
-      + " / " + (spec.loop === 0 ? "ずっとループ" : "1回だけ再生（プレビューはくり返し表示）");
+      + " / " + (spec.loop === 0 ? "ずっとループ" : "1回だけ再生（プレビューはくり返し表示）")
+      + (fontOk ? "" : FONT_MISSING);
   }
 
   function schedule() {
@@ -1210,6 +1320,7 @@
     await new Promise(resolve => setTimeout(resolve, 30));   // let the message paint
     try {
       const spec = currentSpec();
+      await ensureFont(spec);
       const webp = webpReady && el.format.value === "webp";
       // Frames go to the encoder one by one, so only the previous one stays in memory.
       const encoder = webp
@@ -1278,5 +1389,5 @@
     syncRows();
   });
 
-  window.SCENE_TOOL = { renderFrames, frameStream, buildField, timeline, preset, PRESETS, DEFAULTS };
+  window.SCENE_TOOL = { renderFrames, frameStream, buildField, timeline, preset, PRESETS, DEFAULTS, WEB_FONTS, ensureFont };
 })();
