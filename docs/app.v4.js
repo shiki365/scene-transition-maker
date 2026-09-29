@@ -1,5 +1,5 @@
 /*!
- * app.v3.js - 場面転換素材メーカー (browser edition)
+ * app.v4.js - 場面転換素材メーカー (browser edition)
  *
  * Effects are not drawn one by one. Each one is a "progress field": a
  * greyscale image whose pixel value says when that pixel is reached
@@ -24,7 +24,7 @@
     edge: false, edgeColor: "#ff8a1f", font: "gothic", textPos: "center", textOutline: false,
   };
 
-  const GROUPS = ["暗転・明転", "ワイプ", "幕・帯", "形で閉じる・開く", "模様", "ホラー・雰囲気", "テロップ"];
+  const GROUPS = ["暗転・明転", "ワイプ", "幕・帯", "形で閉じる・開く", "模様", "ホラー・雰囲気", "テロップ", "サイバー"];
 
   // A preset that sets `loop` itself needs it (a heartbeat has to repeat), so it overrides
   // the user's choice; every other preset leaves the loop setting alone.
@@ -128,6 +128,26 @@
     "caption-only": { group: 6, desc: "字幕だけ：画面はそのまま、下に文字を出して消す",
       shape: "uniform", mode: "roundtrip", reach: 0, duration: 0.5, hold: 2.0,
       text: "とある洋館にて", textPos: "bottom", textOutline: true },
+
+    // ---- v2.1
+    "glitch": { group: 7, desc: "グリッチ：横に裂けたノイズの帯が走って覆う",
+      shape: "glitch", mode: "cover", color: "#070b1a", count: 26, seed: 13, feather: 30,
+      edge: true, edgeColor: "#00e5ff", ease: "flicker", duration: 0.9, hold: 0.5 },
+    "digital-rain": { group: 7, desc: "デジタルレイン：光る四角が列ごとに降って覆う",
+      shape: "rain", mode: "cover", color: "#02120a", count: 48, seed: 21, feather: 25,
+      edge: true, edgeColor: "#39ff88", ease: "in", duration: 1.4, hold: 0.5 },
+    "scanline": { group: 7, desc: "走査線：1 行おきに上から走り、残りの行を埋める",
+      shape: "scan", mode: "cover", color: "#05070f", count: 72, feather: 20,
+      edge: true, edgeColor: "#7df9ff", ease: "linear", duration: 0.9, hold: 0.5 },
+    "hex-grid": { group: 7, desc: "ヘックス：六角形のマスが中心から次々に広がって覆う",
+      shape: "hex", mode: "cover", order: "center", color: "#0a0f24", count: 14, feather: 10,
+      edge: true, edgeColor: "#3fa9ff", duration: 1.0, hold: 0.5 },
+    "data-corrupt": { group: 7, desc: "データ破損：ちらつくブロックノイズで覆う",
+      shape: "noise", mode: "cover", color: "#0b0014", block: 16, seed: 5, feather: 90,
+      edge: true, edgeColor: "#ff2bd6", ease: "flicker", duration: 1.0, hold: 0.5 },
+    "caption-cyber": { group: 7, desc: "テロップ（サイバー）：暗転して等幅の文字を表示",
+      shape: "uniform", mode: "cover", color: "#03060c", duration: 0.8, hold: 1.6,
+      text: "SYSTEM REBOOT", font: "mono", textColor: "#39ff88" },
   };
 
   // Choices that change meaning with the shape: [value, label] pairs plus the row's label.
@@ -142,6 +162,7 @@
   const COUNTS = {
     blinds: ["本数", 2, 40], wave: ["波の数", 1, 16], drip: ["しずくの数", 4, 60],
     tiles: ["横のマス数", 3, 40], spiral: ["巻き数", 1, 8],
+    glitch: ["帯の数", 6, 60], rain: ["列の数", 8, 120], scan: ["走査線の数", 8, 180], hex: ["横のマス数", 4, 40],
   };
   const AMOUNTS = { wave: "波の高さ", ink: "にじみの強さ", drip: "しずくの長さ" };
 
@@ -185,6 +206,7 @@
   const FONTS = {
     gothic: '"Yu Gothic UI","Yu Gothic","Hiragino Kaku Gothic ProN","Meiryo",sans-serif',
     mincho: '"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif',
+    mono: '"Consolas","Menlo","Courier New","Yu Gothic UI","Meiryo",monospace',
   };
   // How strongly the edge colour shows at each coverage value: none when clear or covered, full halfway.
   const EDGE = Uint8Array.from({ length: 256 }, (_, c) => Math.round(255 * Math.sin(Math.PI * c / 255)));
@@ -534,6 +556,90 @@
           values[y * w + x] = (order[j * nx + i] - lo) / span * spread + local(a, b) * (1 - spread);
         }
       }
+    } else if (spec.shape === "glitch") {
+      // Horizontal bands of random height (in screen fractions, so the preview matches the export),
+      // each swept from a random side at a random moment, its edge broken into jagged segments.
+      const random = mulberry32(seed);
+      const bands = [];
+      const avg = 1 / Math.max(2, spec.count);
+      for (let v0 = 0; v0 < 1;) {
+        const v1 = Math.min(1, v0 + avg * (0.25 + random() * 1.5));
+        bands.push({ end: v1, order: random(), left: random() < 0.5 });
+        v0 = v1;
+      }
+      let b = 0;
+      for (let y = 0; y < h; y++) {
+        const v = (y + 0.5) / h;
+        while (b < bands.length - 1 && v >= bands[b].end) b++;
+        const band = bands[b];
+        for (let x = 0; x < w; x++) {
+          const u = (x + 0.5) / w;
+          const jag = (hash2(b, Math.floor(u * 14), seed) - 0.5) * 0.12;
+          values[y * w + x] = band.order * 0.7 + ((band.left ? u : 1 - u) + jag) * 0.3;
+        }
+      }
+    } else if (spec.shape === "rain") {
+      // Square cells in columns; every column falls from the top starting at its own moment.
+      // The thin gaps between cells fill last, so the grid shows until the very end.
+      const cols = Math.max(4, spec.count);
+      const cell = w / cols;
+      const rows = Math.max(1, Math.ceil(h / cell));
+      for (let y = 0; y < h; y++) {
+        const row = Math.floor(y / cell), fy = y / cell - row;
+        for (let x = 0; x < w; x++) {
+          const col = Math.floor(x / cell), fx = x / cell - col;
+          const gap = cell >= 6 && (fx < 0.08 || fx > 0.92 || fy < 0.08 || fy > 0.92);
+          values[y * w + x] = gap ? 1.05
+            : hash2(col, 0, seed) * 0.45 + (row / rows) * 0.55 + hash2(col, row, seed + 1) * 0.04;
+        }
+      }
+    } else if (spec.shape === "scan") {
+      // Interlaced scan: every other line top to bottom, then the lines in between.
+      const lines = Math.max(2, spec.count);
+      for (let y = 0; y < h; y++) {
+        const v = (y + 0.5) / h;
+        const value = (Math.floor(v * lines) % 2) * 0.5 + v * 0.5;
+        for (let x = 0; x < w; x++) values[y * w + x] = value;
+      }
+    } else if (spec.shape === "hex") {
+      // Flat-topped hexagons, each growing from its own centre like the tiles, in the same orders.
+      const size = w / (Math.max(1, spec.count) * 1.5);   // centre to corner, in pixels
+      const S3 = Math.sqrt(3);
+      const qs = new Int16Array(w * h), rs = new Int16Array(w * h);
+      const cells = new Map();
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const px = x + 0.5, py = y + 0.5;
+          const fq = (2 / 3 * px) / size, fr = (-px / 3 + S3 / 3 * py) / size, fs = -fq - fr;
+          let q = Math.round(fq), r = Math.round(fr);
+          const s = Math.round(fs);
+          const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s - fs);
+          if (dq > dr && dq > ds) q = -r - s;
+          else if (dr > ds) r = -q - s;
+          qs[y * w + x] = q; rs[y * w + x] = r;
+          const key = q * 4096 + r;
+          if (!cells.has(key)) {
+            const cx = size * 1.5 * q, cy = size * S3 * (r + q / 2);
+            const u = cx / w, v = cy / h;
+            cells.set(key, spec.order === "center" ? Math.hypot((u - spec.center[0]) * aspect, v - spec.center[1])
+              : spec.order === "random" ? hash2(q, r, seed)
+              : spec.order === "checker" ? (((q - r) % 3) + 3) % 3
+              : along(dir, Math.min(1, Math.max(0, u)), Math.min(1, Math.max(0, v))));
+          }
+        }
+      }
+      let lo = Infinity, hi = -Infinity;
+      for (const o of cells.values()) { if (o < lo) lo = o; if (o > hi) hi = o; }
+      const span = hi > lo ? hi - lo : 1;
+      const spread = spec.order === "checker" ? 2 / 3 : 0.6;   // checker: three groups one after another
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const k = y * w + x, q = qs[k], r = rs[k];
+          const dx = Math.abs(x + 0.5 - size * 1.5 * q), dy = Math.abs(y + 0.5 - size * S3 * (r + q / 2));
+          const local = Math.min(1, Math.max(dy / (S3 / 2 * size), (dx + dy / S3) / size));
+          values[k] = (cells.get(q * 4096 + r) - lo) / span * spread + local * (1 - spread);
+        }
+      }
     }
   }
 
@@ -845,19 +951,20 @@
   function syncRows() {
     const shape = preset(el.preset.value).shape;
     const variant = el.variant.value, order = el.order.value;
+    const tiled = shape === "tiles" || shape === "hex";
     const show = {
       rowDirection: ["linear", "diagonal", "wave"].includes(shape)
-        || (shape === "ink" && variant === "line") || (shape === "tiles" && order === "direction"),
+        || (shape === "ink" && variant === "line") || (tiled && order === "direction"),
       rowAxis: shape === "split" || shape === "blinds",
       rowCount: shape in COUNTS,
       rowBlock: shape === "noise",
       rowIris: shape === "radial",
       rowCenter: ["radial", "form", "clock", "spiral"].includes(shape)
-        || (shape === "ink" && variant === "circle") || (shape === "tiles" && order === "center"),
+        || (shape === "ink" && variant === "circle") || (tiled && order === "center"),
       rowVariant: shape in VARIANTS,
-      rowOrder: shape === "tiles",
+      rowOrder: tiled,
       rowAmount: shape in AMOUNTS,
-      rowSeed: ["noise", "ink", "drip"].includes(shape) || (shape === "tiles" && order === "random"),
+      rowSeed: ["noise", "ink", "drip", "glitch", "rain"].includes(shape) || (tiled && order === "random"),
       rowBand: el.mode.value === "sweep",
       rowEdgeColor: el.edge.checked,
     };
