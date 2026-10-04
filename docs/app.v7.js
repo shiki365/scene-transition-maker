@@ -1,5 +1,5 @@
 /*!
- * app.v6.js - 場面転換素材メーカー (browser edition)
+ * app.v7.js - 場面転換素材メーカー (browser edition)
  *
  * Effects are not drawn one by one. Each one is a "progress field": a
  * greyscale image whose pixel value says when that pixel is reached
@@ -12,9 +12,13 @@
  * reverse, reach, edge colour, caption styles) exist only in the browser.
  * v2.2 adds rings and the colour strobe (the whole layer switches between two colours).
  * "turn" is the one shape whose field moves: it is rebuilt for every frame at that frame's angle.
+ * v2.4: the page also speaks English and Korean (i18n.v1.js). Texts stay Japanese in this file and go
+ * through t() where they reach the page; the Japanese text is the dictionary key.
  */
 (function () {
   "use strict";
+
+  const t = (text, vars) => (window.I18n ? window.I18n.t(text, vars) : text);
 
   const DEFAULTS = {
     shape: "uniform", mode: "cover", size: [1280, 720], color: "#000000",
@@ -263,6 +267,13 @@
     sharetech: ["Share Tech Mono", 400, "mono"],
     pressstart: ["Press Start 2P", 400, "gothic"],
     cinzel: ["Cinzel", 700, "mincho"],
+    // Hangul (v2.4). Weights checked against fonts.googleapis.com/css2 on 2026-10-04.
+    notosanskr: ["Noto Sans KR", 700, "gothic"],
+    jua: ["Jua", 400, "gothic"],
+    blackhansans: ["Black Han Sans", 400, "gothic"],
+    nanumpen: ["Nanum Pen Script", 400, "gothic"],
+    notoserifkr: ["Noto Serif KR", 700, "mincho"],
+    nanummyeongjo: ["Nanum Myeongjo", 700, "mincho"],
   };
   const quoteFamily = name => '"' + name.replace(/["\\]/g, "\\$&") + '"';
 
@@ -1003,8 +1014,11 @@
   let currentPreset = null;
   let webpReady = true;                               // until WEBP.supported() says otherwise
 
+  /** The preset's values; its sample caption is in the page's language. */
   function preset(name) {
-    return Object.assign({}, DEFAULTS, PRESETS[name]);
+    const p = Object.assign({}, DEFAULTS, PRESETS[name]);
+    if (p.text) p.text = t(p.text);
+    return p;
   }
   const forcesLoop = name => Object.prototype.hasOwnProperty.call(PRESETS[name], "loop");
 
@@ -1015,16 +1029,16 @@
     const variants = VARIANTS[shape];
     el.variant.replaceChildren();
     if (variants) {
-      $("variantLabel").textContent = variants[0];
-      for (const [value, label] of variants[1]) el.variant.append(new Option(label, value));
+      $("variantLabel").textContent = t(variants[0]);
+      for (const [value, label] of variants[1]) el.variant.append(new Option(t(label), value));
     }
     const count = COUNTS[shape];
     if (count) {
-      $("countLabel").textContent = count[0];
+      $("countLabel").textContent = t(count[0]);
       el.count.min = count[1];
       el.count.max = count[2];
     }
-    if (AMOUNTS[shape]) $("amountLabel").textContent = AMOUNTS[shape];
+    if (AMOUNTS[shape]) $("amountLabel").textContent = t(AMOUNTS[shape]);
   }
 
   // The output settings belong to the user, not to the effect, so switching presets keeps them.
@@ -1036,7 +1050,7 @@
     const resetLoop = first || forcesLoop(name) || forcesLoop(currentPreset);
     currentPreset = name;
     configureShape(p.shape);
-    el.desc.textContent = p.desc + KEEP_NOTE;
+    el.desc.textContent = t(p.desc) + t(KEEP_NOTE);
     el.color.value = p.color;
     el.edge.checked = p.edge;
     el.edgeColor.value = p.edgeColor;
@@ -1109,16 +1123,16 @@
     $("amountOut").value = shape === "turn" ? turnDegrees(Number(el.amount.value)) + "°" : el.amount.value;
     $("seedOut").value = "#" + el.seed.value;
     $("reachOut").value = el.reach.value + "%";
-    $("strobeOut").value = Number(el.strobe.value) > 0 ? el.strobe.value + "回" : "しない";
+    $("strobeOut").value = Number(el.strobe.value) > 0 ? t("{n}回", { n: el.strobe.value }) : t("しない");
     $("durationOut").value = Number(el.duration.value).toFixed(2) + "s";
     $("holdOut").value = Number(el.hold.value).toFixed(1) + "s";
     $("fontSizeOut").value = el.fontSize.value;
-    $("holdLabel").textContent = el.mode.value === "roundtrip" ? "途中で止める秒数" : "静止の秒数";
-    $("formatNote").textContent = !webpReady
+    $("holdLabel").textContent = t(el.mode.value === "roundtrip" ? "途中で止める秒数" : "静止の秒数");
+    $("formatNote").textContent = t(!webpReady
       ? "このブラウザでは WebP を作れないため、APNG で保存します（Chrome・Edge なら WebP を作れます）。"
       : el.format.value === "webp"
         ? "APNG の数分の 1 の大きさになります。ココフォリアで動くことを確かめてあります。"
-        : "5MB を超えると、ココフォリアではアップロード時に圧縮されて動かなくなります。WebP を使えない場所向けです。";
+        : "5MB を超えると、ココフォリアではアップロード時に圧縮されて動かなくなります。WebP を使えない場所向けです。");
   }
 
   function currentSpec() {
@@ -1171,7 +1185,7 @@
     const spec = currentSpec();
     let fontOk = true;
     if (WEB_FONTS[spec.font] && spec.text) {
-      status.textContent = "書体を読み込んでいます…";
+      status.textContent = t("書体を読み込んでいます…");
       fontOk = await ensureFont(spec);
       if (ticket !== drawing) return;                 // a newer change is already on its way
     }
@@ -1179,11 +1193,10 @@
     player.load(render, spec.loop);
     const seconds = render.delays.reduce((sum, d) => sum + d, 0) / 1000;
     status.classList.remove("error");
-    status.textContent = "出力 " + el.size.value
-      + " / " + render.frames.length + "コマ"
-      + " / " + seconds.toFixed(2) + "秒"
-      + " / " + (spec.loop === 0 ? "ずっとループ" : "1回だけ再生（プレビューはくり返し表示）")
-      + (fontOk ? "" : FONT_MISSING);
+    status.textContent = t("出力 {size} / {frames}コマ / {seconds}秒 / ", {
+      size: el.size.value, frames: render.frames.length, seconds: seconds.toFixed(2),
+    }) + t(spec.loop === 0 ? "ずっとループ" : "1回だけ再生（プレビューはくり返し表示）")
+      + (fontOk ? "" : t(FONT_MISSING));
   }
 
   function schedule() {
@@ -1309,14 +1322,14 @@
   /** A file name from the preset's label, safe on Windows. */
   function fileName(ext) {
     const label = el.preset.selectedOptions[0].text.replace(/[\\/:*?"<>|]/g, "_");
-    return label + (el.reverse.checked ? "（逆再生）" : "") + ext;
+    return label + (el.reverse.checked ? t("（逆再生）") : "") + ext;
   }
 
   $("download").addEventListener("click", async () => {
     const button = $("download");
     button.disabled = true;
     status.classList.remove("error");
-    status.textContent = "書き出し中...";
+    status.textContent = t("書き出し中...");
     await new Promise(resolve => setTimeout(resolve, 30));   // let the message paint
     try {
       const spec = currentSpec();
@@ -1330,7 +1343,7 @@
       let done = 0;
       for (const { pixels, delay } of frameStream(spec)) {
         await encoder.add(pixels, delay);
-        status.textContent = "書き出し中... " + (++done) + " / " + count + " コマ";
+        status.textContent = t("書き出し中... {done} / {count} コマ", { done: ++done, count });
       }
       const result = encoder.finish();
       const name = fileName(webp ? ".webp" : ".png");
@@ -1344,20 +1357,23 @@
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       const bytes = result.blob.size;
       const sizeText = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : (bytes / 1024).toFixed(1) + " KB";
-      status.textContent = name + " を保存しました（" + spec.size.join("x")
-        + " / " + result.frames + "コマ / " + sizeText + "）";
+      status.textContent = t("{name} を保存しました（{size} / {frames}コマ / {bytes}）", {
+        name, size: spec.size.join("x"), frames: result.frames, bytes: sizeText,
+      });
       if (bytes >= CCFOLIA_LIMIT) {
         status.classList.add("error");
-        const lighter = "出力サイズを小さくする・なめらかさを下げる・動きの秒数を短くする"
-          + (spec.shape === "noise" ? "・粒を大きくする" : "") + "と軽くなります。";
+        const lighter = t(spec.shape === "noise"
+          ? "出力サイズを小さくする・なめらかさを下げる・動きの秒数を短くする・粒を大きくすると軽くなります。"
+          : "出力サイズを小さくする・なめらかさを下げる・動きの秒数を短くすると軽くなります。");
         status.textContent += webp
-          ? "。ただし 5MB 以上あるため、ココフォリアにはアップロードできません。" + lighter
-          : "。ただし 5MB 以上あるため、ココフォリアではアップロード時に圧縮されて動かなくなります。"
-            + (webpReady ? "形式を WebP にすると軽くなります。" : lighter);
+          ? t("。ただし 5MB 以上あるため、ココフォリアにはアップロードできません。") + lighter
+          : t("。ただし 5MB 以上あるため、ココフォリアではアップロード時に圧縮されて動かなくなります。")
+            + (webpReady ? t("形式を WebP にすると軽くなります。") : lighter);
       }
     } catch (error) {
       status.classList.add("error");
-      status.textContent = "エラー: " + error.message;
+      // The encoders throw Japanese messages, which are keys like any other text.
+      status.textContent = t("エラー: {message}", { message: t(error.message) });
     } finally {
       button.disabled = false;
     }
@@ -1365,9 +1381,9 @@
 
   GROUPS.forEach((label, index) => {
     const group = document.createElement("optgroup");
-    group.label = label;
+    group.label = t(label);
     for (const [name, p] of Object.entries(PRESETS)) {
-      if (p.group === index) group.append(new Option(p.desc.split("：")[0], name));
+      if (p.group === index) group.append(new Option(t(p.desc.split("：")[0]), name));
     }
     el.preset.append(group);
   });

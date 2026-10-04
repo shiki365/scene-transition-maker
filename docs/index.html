@@ -1,7 +1,10 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-langs="ja en ko">
 <head>
 <meta charset="utf-8">
+<script src="i18n.v1.js"></script>
+<script src="lang.en.v1.js"></script>
+<script src="lang.ko.v1.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>場面転換素材メーカー | ココフォリア向け 場面転換アニメーション（WebP / APNG）</title>
 <meta name="description" content="暗転・ワイプ・アイリスから、血のしたたり・星形・水玉まで、TRPGオンラインセッション用の場面転換アニメーション素材（WebP / APNG）をブラウザだけで作れる無料ツールです。">
@@ -30,7 +33,11 @@
   header { padding: 18px 24px 14px; border-bottom: 1px solid var(--line); }
   h1 { margin: 0 0 4px; font-size: 17px; }
   header p { margin: 0; color: var(--muted); font-size: 12px; }
-  .home-link { display: inline-block; margin-bottom: 4px; color: var(--muted); font-size: 12px; text-decoration: none; }
+  .topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px; margin-bottom: 4px; }
+  .lang-switch { margin: 0; color: var(--muted); font-size: 12px; }
+  .lang-switch a { color: #a8abff; }
+  .lang-switch a[aria-current] { color: var(--fg); font-weight: 700; text-decoration: none; }
+  .home-link { display: inline-block; color: var(--muted); font-size: 12px; text-decoration: none; }
   .home-link:hover { color: var(--fg); text-decoration: underline; }
   .home-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   main { display: grid; gap: 20px; padding: 20px 24px 40px;
@@ -110,7 +117,10 @@
 <body>
 
 <header>
-  <a class="home-link" href="https://shiki365.github.io/">‹ shiki365 のツール置き場</a>
+  <div class="topline">
+    <a class="home-link" href="https://shiki365.github.io/">‹ shiki365 のツール置き場</a>
+    <p class="lang-switch" data-lang-switch></p>
+  </div>
   <h1>場面転換素材メーカー</h1>
   <p>暗転・ワイプ・アイリスなどの場面転換アニメーション（WebP / APNG）を作れます。設定を変えるとその場でプレビューされ、「ダウンロード」で保存できます。すべてブラウザの中だけで処理され、画像がどこかに送られることはありません。</p>
 </header>
@@ -259,6 +269,11 @@
             <option value="zenantique">Zen Antique（活版）</option><option value="yujisyuku">Yuji Syuku（筆）</option>
             <option value="yujiboku">Yuji Boku（筆・太）</option>
           </optgroup>
+          <optgroup label="韓国語（Google Fonts）">
+            <option value="notosanskr">Noto Sans KR</option><option value="jua">Jua（丸）</option>
+            <option value="blackhansans">Black Han Sans（極太）</option><option value="nanumpen">Nanum Pen Script（手書き）</option>
+            <option value="notoserifkr">Noto Serif KR</option><option value="nanummyeongjo">Nanum Myeongjo（明朝）</option>
+          </optgroup>
           <optgroup label="英数字だけ（Google Fonts。かなは代わりの書体）">
             <option value="orbitron">Orbitron（SF）</option><option value="sharetech">Share Tech Mono（端末）</option>
             <option value="pressstart">Press Start 2P（ドット）</option><option value="cinzel">Cinzel（碑文）</option>
@@ -333,7 +348,7 @@
       <h2>使い方</h2>
       <ul>
         <li>プリセットを選び、色や秒数を調整して「ダウンロード」を押します。</li>
-        <li>保存されるのは動く WebP（<code>.webp</code>）です。APNG の数分の 1 の大きさで、ココフォリアにそのまま画像としてアップロードできます。APNG（<code>.png</code>）も選べます。</li>
+        <li data-i18n>保存されるのは動く WebP（<code>.webp</code>）です。APNG の数分の 1 の大きさで、ココフォリアにそのまま画像としてアップロードできます。APNG（<code>.png</code>）も選べます。</li>
         <li>既定は「1 回だけ再生して最後のコマで止まる」動きです。暗転は黒いまま残り、明転は透明になって消えます（プレビューは確かめやすいように、くり返し表示します）。</li>
         <li>暗転で場面を隠す → 背景を差し替える → 明転で見せる、と 2 枚 1 組で使うと自然につながります。対になる素材は「逆再生」にチェックを入れて、もう一度保存すると作れます。</li>
         <li>プレビューの「画像…」で手元の画像を背景にすると、実際の場面に重ねたときの見え方を確かめられます（画像はどこにも送られません）。</li>
@@ -354,14 +369,14 @@
 
 <footer>
   ブラウザだけで動く無料ツールです。作った素材は用途を問わず自由に使えます（クレジット表記も不要です）。<br>
-  TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。<br>
+  <span data-i18n>TRPG オンラインセッションツールでの利用を想定していますが、いずれのサービスとも関係のない<strong>非公式</strong>のツールです。</span><br>
   <a href="https://shiki365.github.io/">ほかのツールも見る（shiki365 のツール置き場）</a> ・ <a href="https://shiki365.github.io/#contact">不具合の報告・感想</a> ・ <a href="https://sabunomisogi.booth.pm/items/8891048">開発を応援する（BOOTH）</a><br>
-  <span id="version">v2.3</span> ・ 最終更新 2026-09-29
+  <span id="version">v2.4</span> ・ <span>最終更新</span> 2026-10-04
 </footer>
 
 <script src="apng.v2.js"></script>
 <script src="webp.v1.js"></script>
-<script src="app.v6.js"></script>
-<script src="pcfonts.v1.js"></script>
+<script src="app.v7.js"></script>
+<script src="pcfonts.v2.js"></script>
 </body>
 </html>
