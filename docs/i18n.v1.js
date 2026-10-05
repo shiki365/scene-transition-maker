@@ -34,9 +34,9 @@
   const offered = (root.getAttribute("data-langs") || "ja").split(/\s+/).filter(code => NAMES[code]);
 
   const norm = text => String(text).replace(/\s+/g, " ").trim();
-  // Kana, kanji and full-width signs, except the dice bot's ＜ ＞, which stay as they are in every
-  // language ("＞ 9" is not a text to translate).
-  const hasJapanese = text => /[぀-ヿ㐀-鿿！-；＝？-｠]/.test(text);
+  // Kana, kanji, Japanese punctuation (、。「」…) and full-width signs, except the dice bot's ＜ ＞,
+  // which stay as they are in every language ("＞ 9" is not a text to translate).
+  const hasJapanese = text => /[、-ヿ㐀-鿿！-；＝？-｠]/.test(text);
 
   function remember(code) {
     try { localStorage.setItem(STORE, code); } catch (err) { /* storage may be blocked */ }
